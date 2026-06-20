@@ -37,6 +37,13 @@ src/
 
 Principes : séparation **UI / logique / store** ; aucune logique métier dans les vues ; noms d'exercices/routines **figés** dans l'historique (intégrité référentielle) ; persistance **debouncée (~300 ms)** + flush sur validation / fin de séance / mise en arrière-plan (reprise à l'identique après kill).
 
+### 📚 Documentation détaillée
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — structure, couches, état, persistance, navigation
+- [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) — entités, relations, intégrité référentielle
+- [`docs/BUSINESS-RULES.md`](docs/BUSINESS-RULES.md) — règles métier (§6) + format d'export (§7)
+- [`docs/SCREENS.md`](docs/SCREENS.md) — description écran par écran
+
 ### Logique métier testée (`src/logic/__tests__`)
 
 - `computeVolume` — Σ poids×reps des séries validées d'exercices actifs (poids de corps = 0).
