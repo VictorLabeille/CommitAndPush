@@ -1,56 +1,57 @@
-# Welcome to your Expo app 👋
+# Commit & Push
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Application mobile **native** de suivi de musculation — **offline-first**, **sans backend ni compte**, UI **française**. La seule « intégration » est la génération, en fin de séance, d'un **résumé textuel structuré** partagé via le partage natif du téléphone vers l'« AI Coach » de Google Health.
 
-## Get started
+Stack : **Expo SDK 56** · React Native 0.85 · **TypeScript strict** · **expo-router** · **Zustand + persist (AsyncStorage)**.
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Démarrer
 
 ```bash
-npm run reset-project
+npm install
+npx expo start          # puis scanner le QR code avec Expo Go (SDK 56)
+# ou : npm run android / npm run ios
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+> **Node :** RN 0.85 recommande Node ≥ 20.19.4 (ou 22 LTS). Le projet s'installe et bundle sous 20.19.2, mais pour les builds natifs, préférer Node 22 LTS (`nvm install 22`).
 
-### Other setup steps
+## Scripts
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Commande | Rôle |
+|---|---|
+| `npm start` | serveur de dev Expo |
+| `npm test` | tests unitaires (logique métier) |
+| `npm run typecheck` | `tsc --noEmit` (strict) |
+| `npm run lint` | ESLint Expo |
 
-## Learn more
+## Architecture
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+src/
+├── app/                  # routes expo-router (Bibliothèque · Séance · Historique + Bilan + détail)
+├── store/                # store Zustand persisté + opérations pures de séance (sessionOps)
+├── logic/                # LOGIQUE MÉTIER PURE, testée : volume, export, ghost, format
+├── theme/                # design tokens + typographie (Space Grotesk / Space Mono)
+├── components/           # ui/ (kit réutilisable) + library/ + workout/ + history/
+└── hooks/                # useChrono…
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Principes : séparation **UI / logique / store** ; aucune logique métier dans les vues ; noms d'exercices/routines **figés** dans l'historique (intégrité référentielle) ; persistance **debouncée (~300 ms)** + flush sur validation / fin de séance / mise en arrière-plan (reprise à l'identique après kill).
 
-## Join the community
+### Logique métier testée (`src/logic/__tests__`)
 
-Join our community of developers creating universal apps.
+- `computeVolume` — Σ poids×reps des séries validées d'exercices actifs (poids de corps = 0).
+- `buildExportText` — texte d'export **au caractère près** (§7) : filtres, formats, décimale virgule, `0kg x` pour le poids de corps.
+- `ghostFor` — dernière perf validée d'un exercice (ou `null`).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm test   # 16 tests
+```
+
+## Choix techniques notables
+
+- **Partage de texte** : l'export utilise l'API `Share` de React Native (intent `ACTION_SEND text/plain`), seule adaptée au partage de **texte** vers l'AI Coach. `expo-sharing` (imposé) ne partage que des fichiers ; le presse-papier reste assuré par `expo-clipboard`.
+- **Réorganisation des exercices** : implémentée via **Monter / Descendre** (comme le prototype de référence). `react-native-draggable-flatlist` est installé (stack imposée) mais non câblé par prudence vis-à-vis de Reanimated v4 (SDK 56) ; le vrai drag & drop pourra être branché ultérieurement sans changer le modèle de données.
+
+## Référence design
+
+Le dossier `design_handoff_commit_and_push/` (cahier des charges, README de handoff, prototype HTML) sert d'**oracle visuel et comportemental**. Il n'est pas embarqué dans l'app.

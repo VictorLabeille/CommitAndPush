@@ -78,7 +78,11 @@ export default function SessionDetailScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
         <Text style={styles.date}>{fmtDate(session.startTime)}</Text>
         {editMode ? (
           <TextInput

@@ -111,7 +111,7 @@ function ActiveSession() {
   const router = useRouter();
   const toast = useToast();
 
-  const session = useStore((s) => s.activeSession!);
+  const session = useStore((s) => s.activeSession);
   const exercises = useStore((s) => s.exercises);
   const sessions = useStore((s) => s.sessions);
   const addExerciseToActive = useStore((s) => s.addExerciseToActive);
@@ -126,13 +126,18 @@ function ActiveSession() {
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [menuExId, setMenuExId] = useState<string | null>(null);
 
-  const volume = useMemo(() => computeVolume(session), [session]);
+  const volume = useMemo(() => (session ? computeVolume(session) : 0), [session]);
   const visibleEx = useMemo(() => visibleExercises(exercises), [exercises]);
   const ghostMap = useMemo(() => {
     const map: Record<string, string | null> = {};
-    for (const ex of session.exercises) map[ex.exerciseId] = ghostFor(ex.exerciseId, sessions);
+    if (session) {
+      for (const ex of session.exercises) map[ex.exerciseId] = ghostFor(ex.exerciseId, sessions);
+    }
     return map;
-  }, [session.exercises, sessions]);
+  }, [session, sessions]);
+
+  // Garde : la séance peut devenir null (Terminer) pendant que ce composant est monté.
+  if (!session) return null;
 
   const menuIndex = menuExId ? session.exercises.findIndex((e) => e.exerciseId === menuExId) : -1;
   const menuEx = menuIndex >= 0 ? session.exercises[menuIndex] : null;
@@ -150,6 +155,7 @@ function ActiveSession() {
         keyExtractor={(e) => e.exerciseId}
         contentContainerStyle={styles.activeListContent}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         renderItem={({ item }) => (
           <ExerciseCard
             exercise={item}
