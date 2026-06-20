@@ -39,6 +39,11 @@ export function parseReps(v: string): number {
   return isNaN(x) || x < 0 ? 0 : x;
 }
 
+/** Libellé d'affichage d'une série : « 80kg × 10 » ou « PdC × 12 » (poids de corps). */
+export function setLabel(set: { weight: number; reps: number }): string {
+  return (set.weight === 0 ? 'PdC' : fmtNum(set.weight) + 'kg') + ' × ' + set.reps;
+}
+
 /** Chrono « HH:MM:SS » à partir d'un nombre de secondes écoulées. */
 export function fmtChrono(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
