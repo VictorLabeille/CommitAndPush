@@ -8,7 +8,6 @@
     "scheme": "commitandpush",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.rotsiv.CommitAndPush"
     },
     "android": {
@@ -31,10 +30,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#E8E2D3",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200
         }
       ],
       "expo-sharing"
