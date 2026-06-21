@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
@@ -14,7 +14,8 @@ import { useToast } from '@/components/ui/Toast';
 import { SetChip } from '@/components/history/SetChip';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { ExportSheet } from '@/components/workout/ExportSheet';
-import { fmtDate, fmtVol, parseReps, parseWeight, setLabel } from '@/logic/format';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
+import { fmtDate, fmtVol, fmtWeekday, parseReps, parseWeight, setLabel } from '@/logic/format';
 import { computeDurationMin, computeVolume } from '@/logic/volume';
 import { useStore } from '@/store/store';
 import { colors, radii, spacing } from '@/theme/tokens';
@@ -24,6 +25,7 @@ export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
   const toast = useToast();
 
   const session = useStore((s) => s.sessions.find((x) => x.id === id) ?? null);
@@ -79,11 +81,17 @@ export default function SessionDetailScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          // iOS : automaticallyAdjustKeyboardInsets ; Android edge-to-edge : marge manuelle.
+          Platform.OS === 'android' && { paddingBottom: 24 + keyboard },
+        ]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <Text style={styles.date}>{fmtDate(session.startTime)}</Text>
+        <Text style={styles.date}>
+          {fmtWeekday(session.startTime)} {fmtDate(session.startTime)}
+        </Text>
         {editMode ? (
           <TextInput
             style={styles.nameInput}

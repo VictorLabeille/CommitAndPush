@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { AddExerciseSheet } from '@/components/workout/AddExerciseSheet';
 import { ChronoHeader } from '@/components/workout/ChronoHeader';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { parseReps, parseWeight } from '@/logic/format';
 import { ghostFor } from '@/logic/ghost';
 import { computeVolume } from '@/logic/volume';
@@ -122,6 +123,7 @@ function ActiveSession() {
   const toggleSet = useStore((s) => s.toggleActiveSet);
   const finishSession = useStore((s) => s.finishSession);
 
+  const keyboard = useKeyboardHeight();
   const [fabOpen, setFabOpen] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [menuExId, setMenuExId] = useState<string | null>(null);
@@ -153,7 +155,12 @@ function ActiveSession() {
       <FlatList
         data={session.exercises}
         keyExtractor={(e) => e.exerciseId}
-        contentContainerStyle={styles.activeListContent}
+        contentContainerStyle={[
+          styles.activeListContent,
+          // iOS gère via automaticallyAdjustKeyboardInsets ; sur Android edge-to-edge
+          // on ajoute la marge soi-même pour pouvoir faire défiler le champ visé.
+          Platform.OS === 'android' && { paddingBottom: 120 + keyboard },
+        ]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         renderItem={({ item }) => (

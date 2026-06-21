@@ -6,8 +6,6 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { colors, radii, spacing } from '@/theme/tokens';
 import { type } from '@/theme/typography';
 
@@ -30,6 +29,7 @@ interface Props {
 export function BottomSheet({ visible, onClose, title, children }: Props) {
   const [mounted, setMounted] = useState(visible);
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
   const translateY = useRef(new Animated.Value(SCREEN_H)).current;
   const scrim = useRef(new Animated.Value(0)).current;
 
@@ -56,22 +56,23 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.kav}
-        pointerEvents="box-none"
-      >
+      {/* On décale le sheet au-dessus du clavier nous-mêmes (edge-to-edge Android
+          ne redimensionne plus la fenêtre, cf. useKeyboardHeight). */}
+      <View style={[styles.kav, { paddingBottom: keyboard }]} pointerEvents="box-none">
         <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: insets.bottom + 16, transform: [{ translateY }] },
+            {
+              paddingBottom: (keyboard > 0 ? 16 : insets.bottom + 16),
+              transform: [{ translateY }],
+            },
           ]}
         >
           <View style={styles.handle} />
           {title ? <Text style={styles.title}>{title}</Text> : null}
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

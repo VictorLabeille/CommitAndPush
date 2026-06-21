@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
-import { fmtDate, fmtVol } from '@/logic/format';
+import { fmtDate, fmtVol, fmtWeekday } from '@/logic/format';
 import { computeDurationMin, computeVolume } from '@/logic/volume';
 import type { WorkoutSession } from '@/store/types';
 import { colors } from '@/theme/tokens';
@@ -17,7 +17,9 @@ export function SessionCard({ session, onPress }: Props) {
     <Pressable onPress={onPress}>
       <Card>
         <View style={styles.metaRow}>
-          <Text style={styles.date}>{fmtDate(session.startTime)}</Text>
+          <Text style={styles.date}>
+            {fmtWeekday(session.startTime)} {fmtDate(session.startTime)}
+          </Text>
           <Text style={styles.duration}>{computeDurationMin(session)} min</Text>
         </View>
         <Text style={styles.name} numberOfLines={1}>

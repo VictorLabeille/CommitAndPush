@@ -13,6 +13,13 @@ export function fmtDate(ts: number): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+const WEEKDAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+
+/** Jour de la semaine FR (ex: « Vendredi »), heure locale. Affichage uniquement. */
+export function fmtWeekday(ts: number): string {
+  return WEEKDAYS_FR[new Date(ts).getDay()];
+}
+
 /** Valeur numérique avec séparateur décimal virgule (ex: 2.5 -> "2,5", 80 -> "80"). */
 export function fmtNum(n: number): string {
   return String(n).replace('.', ',');
