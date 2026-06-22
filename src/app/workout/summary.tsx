@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/ui/Card';
@@ -10,6 +10,7 @@ import { PromptSheet } from '@/components/ui/PromptSheet';
 import { StatTile } from '@/components/ui/StatTile';
 import { SetChip } from '@/components/history/SetChip';
 import { ExportSheet } from '@/components/workout/ExportSheet';
+import { shouldRemind, unsavedCount } from '@/logic/backup';
 import { fmtVol, setLabel } from '@/logic/format';
 import { computeDurationMin, computeVolume } from '@/logic/volume';
 import { useStore } from '@/store/store';
@@ -23,9 +24,12 @@ export default function SummaryScreen() {
 
   const session = useStore((s) => s.sessions.find((x) => x.id === id) ?? null);
   const setSessionDuration = useStore((s) => s.setSessionDuration);
+  const sessions = useStore((s) => s.sessions);
+  const lastBackupAt = useStore((s) => s.lastBackupAt);
 
   const [durOpen, setDurOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [remindDismissed, setRemindDismissed] = useState(false);
 
   if (!session) {
     return (
@@ -42,6 +46,9 @@ export default function SummaryScreen() {
   const skippedNames = session.exercises
     .filter((e) => e.status === 'skipped')
     .map((e) => e.exerciseName);
+
+  const unsaved = unsavedCount(sessions, lastBackupAt);
+  const showRemind = !remindDismissed && shouldRemind(unsaved);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 16 }]}>
@@ -84,6 +91,28 @@ export default function SummaryScreen() {
             <Text style={styles.skipped}>Ignorés : {skippedNames.join(', ')}</Text>
           ) : null}
         </Card>
+
+        {showRemind ? (
+          <Card style={styles.remindCard}>
+            <View style={styles.remindHead}>
+              <Ionicons name="cloud-upload-outline" size={20} color={colors.gold} />
+              <Text style={styles.remindTitle}>Pense à sauvegarder</Text>
+              <Pressable onPress={() => setRemindDismissed(true)} hitSlop={8}>
+                <Ionicons name="close" size={18} color={colors.muted} />
+              </Pressable>
+            </View>
+            <Text style={styles.remindText}>
+              {unsaved} séances enregistrées depuis ta dernière sauvegarde. Exporte tes données
+              pour ne rien perdre.
+            </Text>
+            <Button
+              label="Sauvegarder mes données"
+              variant="outline"
+              onPress={() => router.push('/settings')}
+              style={styles.remindBtn}
+            />
+          </Card>
+        ) : null}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -142,4 +171,9 @@ const styles = StyleSheet.create({
   noSet: { fontFamily: fonts.grotesk.regular, fontSize: 13, color: colors.muted },
   skipped: { fontFamily: fonts.grotesk.regular, fontSize: 13, color: colors.muted, fontStyle: 'italic' },
   footer: { paddingHorizontal: spacing.gutter, paddingTop: 12, gap: 10, backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border },
+  remindCard: { marginTop: 16, gap: 10, borderWidth: 1, borderColor: colors.goldSoft },
+  remindHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  remindTitle: { flex: 1, fontFamily: fonts.grotesk.semibold, fontSize: 15, color: colors.ink },
+  remindText: { fontFamily: fonts.grotesk.regular, fontSize: 13, lineHeight: 19, color: colors.muted },
+  remindBtn: { marginTop: 2 },
 });

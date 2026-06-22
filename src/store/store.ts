@@ -12,6 +12,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { BACKUP_VERSION, migrateData, type BackupData } from '@/logic/backup';
 import { newId } from '@/utils/id';
 import * as ops from './sessionOps';
 import { debouncedStorage, flushStorage } from './storage';
@@ -27,6 +28,7 @@ interface PersistedState {
   routines: Routine[];
   sessions: WorkoutSession[]; // historique (séances completed)
   activeSession: WorkoutSession | null;
+  lastBackupAt: number | null; // horodatage du dernier export (rappel de sauvegarde)
 }
 
 interface AppState extends PersistedState {
@@ -76,6 +78,10 @@ interface AppState extends PersistedState {
   ) => void;
   editToggleSet: (id: string, exerciseId: string, setId: string) => boolean;
   editExerciseStatus: (id: string, exerciseId: string, status: WorkoutExerciseStatus) => void;
+
+  // --- Sauvegarde / restauration ---
+  markBackedUp: () => void; // marque les données comme sauvegardées (après export)
+  replaceAll: (version: number, data: BackupData) => void; // remplace TOUT (import)
 }
 
 /** Applique une transformation à la séance active si elle existe. */
@@ -98,8 +104,26 @@ export const useStore = create<AppState>()(
         routines: [],
         sessions: [],
         activeSession: null,
+        lastBackupAt: null,
         _hasHydrated: false,
         setHasHydrated: (v) => set({ _hasHydrated: v }),
+
+        // --- Sauvegarde / restauration ---
+        markBackedUp: () => {
+          set({ lastBackupAt: Date.now() });
+          flushStorage();
+        },
+        replaceAll: (version, data) => {
+          const d = migrateData(data, version);
+          set({
+            exercises: d.exercises,
+            routines: d.routines,
+            sessions: d.sessions,
+            activeSession: d.activeSession,
+            lastBackupAt: Date.now(), // l'état importé est, par définition, « sauvegardé »
+          });
+          flushStorage();
+        },
 
         // --- Exercices ---
         addExercise: (name) =>
@@ -259,16 +283,20 @@ export const useStore = create<AppState>()(
     },
     {
       name: 'commit-and-push',
-      version: 1,
+      version: BACKUP_VERSION,
       storage: createJSONStorage(() => debouncedStorage),
       partialize: (state): PersistedState => ({
         exercises: state.exercises,
         routines: state.routines,
         sessions: state.sessions,
         activeSession: state.activeSession,
+        lastBackupAt: state.lastBackupAt,
       }),
-      // Squelette de migration : à enrichir lors des futurs changements de schéma.
-      migrate: (persisted, _version) => persisted as PersistedState,
+      // Migration via la logique pure partagée avec l'import de sauvegarde (`migrateData`).
+      migrate: (persisted, version): PersistedState => {
+        const p = (persisted ?? {}) as Partial<PersistedState>;
+        return { ...migrateData(p, version), lastBackupAt: p.lastBackupAt ?? null };
+      },
       onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
     },
   ),

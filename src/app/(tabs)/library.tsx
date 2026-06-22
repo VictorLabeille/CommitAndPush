@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +25,7 @@ import {
 } from '@/store/selectors';
 import { useStore } from '@/store/store';
 import type { Exercise, Routine } from '@/store/types';
-import { colors, spacing } from '@/theme/tokens';
+import { colors, spacing, touch } from '@/theme/tokens';
 import { fonts } from '@/theme/typography';
 
 type Section = 'exercices' | 'routines';
@@ -31,6 +33,7 @@ type Section = 'exercices' | 'routines';
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  const router = useRouter();
 
   const exercises = useStore((s) => s.exercises);
   const routines = useStore((s) => s.routines);
@@ -63,6 +66,12 @@ export default function LibraryScreen() {
   const archivedR = useMemo(() => archivedRoutines(routines), [routines]);
   const shownRoutines = showArchived ? archivedR : activeR;
 
+  const settingsBtn = (
+    <Pressable onPress={() => router.push('/settings')} hitSlop={8} style={styles.gear}>
+      <Ionicons name="settings-outline" size={22} color={colors.ink} />
+    </Pressable>
+  );
+
   const renderExEmpty = () => (
     <EmptyState
       icon={allVisibleEx.length === 0 ? 'barbell-outline' : 'search'}
@@ -89,7 +98,7 @@ export default function LibraryScreen() {
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <View style={styles.header}>
-              <ScreenHeader eyebrow="Back-office" title="Bibliothèque" />
+              <ScreenHeader eyebrow="Back-office" title="Bibliothèque" right={settingsBtn} />
               <SegmentedControl
                 options={[
                   { value: 'exercices', label: 'Exercices' },
@@ -118,7 +127,7 @@ export default function LibraryScreen() {
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <View style={styles.header}>
-              <ScreenHeader eyebrow="Back-office" title="Bibliothèque" />
+              <ScreenHeader eyebrow="Back-office" title="Bibliothèque" right={settingsBtn} />
               <SegmentedControl
                 options={[
                   { value: 'exercices', label: 'Exercices' },
@@ -319,6 +328,12 @@ function RoutineMenu({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  gear: {
+    width: touch.kebab,
+    height: touch.kebab,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   header: { gap: 16, paddingBottom: 16 },
   listContent: { paddingHorizontal: spacing.gutter, paddingBottom: 24 },
   cta: { paddingHorizontal: spacing.gutter, paddingTop: 8, backgroundColor: colors.bg },
