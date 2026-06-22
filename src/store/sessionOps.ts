@@ -5,6 +5,7 @@
  * les actions du store sont ainsi de fines enveloppes, et aucune logique métier
  * ne vit dans les composants de vue.
  */
+import { moveItem } from '@/logic/reorder';
 import { newId } from '@/utils/id';
 import type { WorkoutExercise, WorkoutExerciseStatus, WorkoutSession } from './types';
 
@@ -104,9 +105,7 @@ export function moveExercise(
 ): WorkoutSession {
   const idx = session.exercises.findIndex((e) => e.exerciseId === exerciseId);
   if (idx < 0) return session;
-  const target = idx + dir;
-  if (target < 0 || target >= session.exercises.length) return session;
-  const arr = [...session.exercises];
-  [arr[idx], arr[target]] = [arr[target], arr[idx]];
-  return { ...session, exercises: reindex(arr) };
+  const moved = moveItem(session.exercises, idx, dir);
+  if (moved === session.exercises) return session; // hors bornes : pas de changement
+  return { ...session, exercises: reindex(moved) };
 }

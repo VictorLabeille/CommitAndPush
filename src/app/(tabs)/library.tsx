@@ -222,6 +222,7 @@ export default function LibraryScreen() {
         initialName={routineEditor?.routine?.name}
         initialSelectedIds={routineEditor?.routine?.exerciseIds}
         exercises={allVisibleEx}
+        allExercises={exercises}
         onSubmit={(name, ids) => {
           if (routineEditor?.mode === 'edit' && routineEditor.routine) {
             updateRoutine(routineEditor.routine.id, name, ids);
