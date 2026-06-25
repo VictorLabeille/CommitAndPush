@@ -50,7 +50,7 @@ export default function StatsScreen() {
   if (sessions.length === 0) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.headerPad}>
+        <View style={[styles.headerPad, styles.gutterX]}>
           <ScreenHeader eyebrow="Progression" title="Stats" />
         </View>
         <EmptyState
@@ -207,6 +207,7 @@ function ProgressChart({ points }: { points: ProgressPoint[] }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   headerPad: { paddingBottom: 18 },
+  gutterX: { paddingHorizontal: spacing.gutter },
   content: { paddingHorizontal: spacing.gutter, paddingTop: 8 },
   tiles: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   sectionTitle: {
