@@ -13,6 +13,13 @@ export function fmtDate(ts: number): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+/** Heure locale « HH:MM » (24 h), ex: 10:00, 18:05. Affichage / export. */
+export function fmtTime(ts: number): string {
+  const d = new Date(ts);
+  const pad = (x: number) => String(x).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const WEEKDAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
 /** Jour de la semaine FR (ex: « Vendredi »), heure locale. Affichage uniquement. */

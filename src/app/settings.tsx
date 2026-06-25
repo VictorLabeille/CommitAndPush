@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { TemplateChoiceSheet } from '@/components/settings/TemplateChoiceSheet';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
@@ -33,11 +34,19 @@ export default function SettingsScreen() {
   const sessions = useStore((s) => s.sessions);
   const activeSession = useStore((s) => s.activeSession);
   const lastBackupAt = useStore((s) => s.lastBackupAt);
+  const exportTemplate = useStore((s) => s.exportTemplate);
+  const setExportTemplate = useStore((s) => s.setExportTemplate);
   const markBackedUp = useStore((s) => s.markBackedUp);
   const replaceAll = useStore((s) => s.replaceAll);
 
   // Sauvegarde validée en attente de confirmation d'écrasement.
-  const [pending, setPending] = useState<{ version: number; data: BackupData } | null>(null);
+  const [pending, setPending] = useState<{
+    version: number;
+    data: BackupData;
+    exportTemplate?: string;
+  } | null>(null);
+  // Texte d'export de la sauvegarde, en attente du choix de l'utilisateur (≠ actuel).
+  const [templateChoice, setTemplateChoice] = useState<{ backup: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const unsaved = useMemo(() => unsavedCount(sessions, lastBackupAt), [sessions, lastBackupAt]);
@@ -50,7 +59,7 @@ export default function SettingsScreen() {
       const data: BackupData = { exercises, routines, sessions, activeSession };
       const file = new File(Paths.cache, backupFilename(now));
       file.create({ overwrite: true });
-      file.write(buildBackup(data, now));
+      file.write(buildBackup(data, now, exportTemplate));
 
       if (!(await Sharing.isAvailableAsync())) {
         toast('Le partage n’est pas disponible sur cet appareil');
@@ -86,7 +95,11 @@ export default function SettingsScreen() {
         toast(parsed.reason);
         return; // données actuelles intactes
       }
-      setPending({ version: parsed.version, data: parsed.data });
+      setPending({
+        version: parsed.version,
+        data: parsed.data,
+        exportTemplate: parsed.exportTemplate,
+      });
     } catch {
       toast('Impossible de lire le fichier');
     } finally {
@@ -96,8 +109,27 @@ export default function SettingsScreen() {
 
   const onConfirmImport = () => {
     if (!pending) return;
+    const backupTpl = pending.exportTemplate;
+    const needsChoice = backupTpl != null && backupTpl !== exportTemplate;
+    // On restaure les données ; le template courant est conservé pour l'instant, le
+    // choix éventuel se fait juste après (étape non destructive).
     replaceAll(pending.version, pending.data);
     setPending(null);
+    if (needsChoice) {
+      setTemplateChoice({ backup: backupTpl });
+    } else {
+      toast('Données restaurées');
+    }
+  };
+
+  const onKeepCurrentTemplate = () => {
+    setTemplateChoice(null);
+    toast('Données restaurées');
+  };
+
+  const onUseBackupTemplate = () => {
+    if (templateChoice) setExportTemplate(templateChoice.backup);
+    setTemplateChoice(null);
     toast('Données restaurées');
   };
 
@@ -153,6 +185,21 @@ export default function SettingsScreen() {
             par celles du fichier.
           </Text>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.eyebrow}>AI Coach</Text>
+          <Text style={styles.h1}>Texte d’export</Text>
+          <Text style={styles.lead}>
+            Personnalise le texte partagé en fin de séance vers l’AI Coach Google Health (date,
+            horaires, durée, volume, exercices…).
+          </Text>
+          <Button
+            label="Modifier le texte d’export"
+            variant="outline"
+            onPress={() => router.push('/export-template')}
+            style={styles.action}
+          />
+        </View>
       </ScrollView>
 
       <ConfirmSheet
@@ -163,6 +210,14 @@ export default function SettingsScreen() {
         danger
         onConfirm={onConfirmImport}
         onCancel={() => setPending(null)}
+      />
+
+      <TemplateChoiceSheet
+        visible={!!templateChoice}
+        current={exportTemplate}
+        backup={templateChoice?.backup ?? ''}
+        onKeepCurrent={onKeepCurrentTemplate}
+        onUseBackup={onUseBackupTemplate}
       />
     </View>
   );
@@ -195,6 +250,12 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 8,
     marginBottom: 20,
+  },
+  section: {
+    marginTop: 28,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   statusCard: { gap: 0, marginBottom: 18 },
   statusRow: {

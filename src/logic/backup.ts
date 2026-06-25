@@ -3,9 +3,10 @@
  * « sauvegarde » du 2026-06-22). Aucune I/O ici : l'écriture/lecture de fichier et le
  * partage vivent dans l'écran Réglages ; le store consomme `migrateData`/`parseBackup`.
  *
- * Enveloppe de fichier : { app, schemaVersion, exportedAt, data }. `data` = les 4
- * collections métier (l'horodatage de sauvegarde `lastBackupAt` est une méta du store, pas
- * une donnée d'entraînement, donc absent de l'enveloppe).
+ * Enveloppe de fichier : { app, schemaVersion, exportedAt, data, exportTemplate? }. `data` =
+ * les 4 collections métier ; `exportTemplate` est un réglage utilisateur optionnel (le template
+ * du texte d'export AI Coach) joint pour être portable d'un appareil à l'autre. L'horodatage de
+ * sauvegarde `lastBackupAt` reste une méta du store (absent de l'enveloppe).
  */
 import type { Exercise, Routine, WorkoutSession } from '@/store/types';
 
@@ -45,17 +46,20 @@ export function backupFilename(now: number): string {
   return `commit-and-push-sauvegarde-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
 }
 
-/** Sérialise l'enveloppe de sauvegarde (indentée = lisible ; UTF-8 préserve accents/emoji). */
-export function buildBackup(data: BackupData, now: number): string {
+/**
+ * Sérialise l'enveloppe de sauvegarde (indentée = lisible ; UTF-8 préserve accents/emoji).
+ * `exportTemplate` n'est écrit que s'il est fourni (clé omise par `JSON.stringify` si undefined).
+ */
+export function buildBackup(data: BackupData, now: number, exportTemplate?: string): string {
   return JSON.stringify(
-    { app: BACKUP_APP, schemaVersion: BACKUP_VERSION, exportedAt: now, data },
+    { app: BACKUP_APP, schemaVersion: BACKUP_VERSION, exportedAt: now, data, exportTemplate },
     null,
     2,
   );
 }
 
 export type ParseResult =
-  | { ok: true; version: number; data: BackupData }
+  | { ok: true; version: number; data: BackupData; exportTemplate?: string }
   | { ok: false; reason: string };
 
 /**
@@ -103,6 +107,8 @@ export function parseBackup(text: string): ParseResult {
       sessions: d.sessions as WorkoutSession[],
       activeSession: (d.activeSession as WorkoutSession | null) ?? null,
     },
+    // Réglage optionnel : appliqué à l'import seulement s'il est présent (sauvegardes anciennes).
+    exportTemplate: typeof env.exportTemplate === 'string' ? env.exportTemplate : undefined,
   };
 }
 

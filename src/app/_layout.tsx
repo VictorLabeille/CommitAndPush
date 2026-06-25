@@ -50,6 +50,7 @@ export default function RootLayout() {
           <Stack.Screen name="workout/summary" />
           <Stack.Screen name="history/[id]" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="export-template" />
         </Stack>
         <ToastHost />
       </SafeAreaProvider>

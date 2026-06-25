@@ -6,6 +6,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { buildExportText } from '@/logic/exportText';
+import { useStore } from '@/store/store';
 import type { WorkoutSession } from '@/store/types';
 import { colors, radii } from '@/theme/tokens';
 import { fonts } from '@/theme/typography';
@@ -27,7 +28,11 @@ interface Props {
  */
 export function ExportSheet({ visible, session, onClose }: Props) {
   const toast = useToast();
-  const text = useMemo(() => (session ? buildExportText(session) : ''), [session]);
+  const template = useStore((s) => s.exportTemplate);
+  const text = useMemo(
+    () => (session ? buildExportText(session, template) : ''),
+    [session, template],
+  );
 
   const copy = async () => {
     await Clipboard.setStringAsync(text);

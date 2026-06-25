@@ -67,6 +67,30 @@ describe('buildBackup / parseBackup', () => {
     expect(env.exportedAt).toBe(999);
   });
 
+  it('joint le template d’export quand il est fourni (round-trip)', () => {
+    const tpl = 'Coach: {date} {debut}–{fin}\n{exercices}';
+    const parsed = parseBackup(buildBackup(sampleData(), 1, tpl));
+    expect(parsed.ok && parsed.exportTemplate).toBe(tpl);
+  });
+
+  it('omet le template absent (sauvegarde sans réglage)', () => {
+    const env = JSON.parse(buildBackup(sampleData(), 1));
+    expect('exportTemplate' in env).toBe(false);
+    const parsed = parseBackup(buildBackup(sampleData(), 1));
+    expect(parsed.ok && parsed.exportTemplate).toBeUndefined();
+  });
+
+  it('ignore un template non-string', () => {
+    const txt = JSON.stringify({
+      app: BACKUP_APP,
+      schemaVersion: BACKUP_VERSION,
+      data: sampleData(),
+      exportTemplate: 42,
+    });
+    const parsed = parseBackup(txt);
+    expect(parsed.ok && parsed.exportTemplate).toBeUndefined();
+  });
+
   it('refuse un JSON invalide', () => {
     expect(parseBackup('{pas du json')).toEqual({ ok: false, reason: expect.any(String) });
   });

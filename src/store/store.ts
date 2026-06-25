@@ -13,6 +13,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { BACKUP_VERSION, migrateData, type BackupData } from '@/logic/backup';
+import { DEFAULT_EXPORT_TEMPLATE } from '@/logic/exportText';
 import { newId } from '@/utils/id';
 import * as ops from './sessionOps';
 import { debouncedStorage, flushStorage } from './storage';
@@ -29,6 +30,7 @@ interface PersistedState {
   sessions: WorkoutSession[]; // historique (séances completed)
   activeSession: WorkoutSession | null;
   lastBackupAt: number | null; // horodatage du dernier export (rappel de sauvegarde)
+  exportTemplate: string; // template du texte d'export AI Coach (personnalisable)
 }
 
 interface AppState extends PersistedState {
@@ -81,7 +83,12 @@ interface AppState extends PersistedState {
 
   // --- Sauvegarde / restauration ---
   markBackedUp: () => void; // marque les données comme sauvegardées (après export)
-  replaceAll: (version: number, data: BackupData) => void; // remplace TOUT (import)
+  // remplace TOUT (import) ; applique le template d'export s'il est présent dans la sauvegarde
+  replaceAll: (version: number, data: BackupData, exportTemplate?: string) => void;
+
+  // --- Réglages ---
+  setExportTemplate: (template: string) => void;
+  resetExportTemplate: () => void; // restaure le template par défaut
 }
 
 /** Applique une transformation à la séance active si elle existe. */
@@ -105,6 +112,7 @@ export const useStore = create<AppState>()(
         sessions: [],
         activeSession: null,
         lastBackupAt: null,
+        exportTemplate: DEFAULT_EXPORT_TEMPLATE,
         _hasHydrated: false,
         setHasHydrated: (v) => set({ _hasHydrated: v }),
 
@@ -113,7 +121,7 @@ export const useStore = create<AppState>()(
           set({ lastBackupAt: Date.now() });
           flushStorage();
         },
-        replaceAll: (version, data) => {
+        replaceAll: (version, data, exportTemplate) => {
           const d = migrateData(data, version);
           set({
             exercises: d.exercises,
@@ -121,6 +129,8 @@ export const useStore = create<AppState>()(
             sessions: d.sessions,
             activeSession: d.activeSession,
             lastBackupAt: Date.now(), // l'état importé est, par définition, « sauvegardé »
+            // Sauvegarde ancienne sans template : on garde le template courant intact.
+            ...(exportTemplate !== undefined ? { exportTemplate } : {}),
           });
           flushStorage();
         },
@@ -279,6 +289,10 @@ export const useStore = create<AppState>()(
         },
         editExerciseStatus: (id, exerciseId, status) =>
           onSession(id, (s) => ops.setExerciseStatus(s, exerciseId, status)),
+
+        // --- Réglages ---
+        setExportTemplate: (template) => set({ exportTemplate: template }),
+        resetExportTemplate: () => set({ exportTemplate: DEFAULT_EXPORT_TEMPLATE }),
       };
     },
     {
@@ -291,11 +305,16 @@ export const useStore = create<AppState>()(
         sessions: state.sessions,
         activeSession: state.activeSession,
         lastBackupAt: state.lastBackupAt,
+        exportTemplate: state.exportTemplate,
       }),
       // Migration via la logique pure partagée avec l'import de sauvegarde (`migrateData`).
       migrate: (persisted, version): PersistedState => {
         const p = (persisted ?? {}) as Partial<PersistedState>;
-        return { ...migrateData(p, version), lastBackupAt: p.lastBackupAt ?? null };
+        return {
+          ...migrateData(p, version),
+          lastBackupAt: p.lastBackupAt ?? null,
+          exportTemplate: p.exportTemplate ?? DEFAULT_EXPORT_TEMPLATE,
+        };
       },
       onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
     },
