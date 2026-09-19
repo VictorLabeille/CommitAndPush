@@ -72,3 +72,16 @@ Les mutations de séance (ajout/validation/suppression de série, ignorer, réor
 
 - Les 3 onglets vivent dans le groupe `(tabs)`. La **séance active** est dans l'onglet Séance et persiste au changement d'onglet (état dans le store).
 - Le **Bilan** (`workout/summary`) et le **détail d'historique** (`history/[id]`) sont des écrans de la pile racine, **au-dessus** des onglets → la barre d'onglets est naturellement masquée et un bouton retour est disponible.
+
+## Choix techniques notables
+
+Repris du `README.md` le 2026-09-19, quand celui-ci est devenu une vitrine en anglais.
+
+- **Partage de texte : l'API `Share` de React Native**, pas `expo-sharing`. L'export vise l'« AI
+  Coach » de Google Health, qui lit du **texte** : il faut l'intent `ACTION_SEND text/plain`.
+  `expo-sharing`, pourtant dans la stack imposée, ne partage que des **fichiers** — il ne peut pas
+  faire ce travail. Le presse-papier reste assuré par `expo-clipboard`.
+- **Réorganisation des exercices par Monter / Descendre**, comme le prototype de référence.
+  `react-native-draggable-flatlist` est installé (stack imposée) mais **non câblé**, par prudence
+  vis-à-vis de Reanimated v4 sous le SDK 56. Le vrai glisser-déposer se branchera plus tard sans
+  toucher au modèle de données : c'est `logic/reorder.ts` qui porte l'ordre, pas la vue.

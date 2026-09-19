@@ -1,3 +1,9 @@
+# AGENTS.md — Commit & Push
+
+> **`README.md` est une vitrine, en anglais** : présentation et démarrage, sans état
+> d'avancement. Le technique va dans `docs/`, l'avancement dans la note Obsidian. Ne pas le
+> repasser en français ni y remettre de checklist.
+
 # Expo HAS CHANGED
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before writing any code.

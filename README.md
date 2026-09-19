@@ -1,64 +1,79 @@
 # Commit & Push
 
-Application mobile **native** de suivi de musculation — **offline-first**, **sans backend ni compte**, UI **française**. La seule « intégration » est la génération, en fin de séance, d'un **résumé textuel structuré** partagé via le partage natif du téléphone vers l'« AI Coach » de Google Health.
+**A gym log that owes nothing to a server.**
 
-Stack : **Expo SDK 56** · React Native 0.85 · **TypeScript strict** · **expo-router** · **Zustand + persist (AsyncStorage)**.
+A native Android app for tracking strength training: routines, sessions, sets and reps, history and
+stats. No account, no backend, no sync — everything lives on the phone. The only thing that ever
+leaves it is a text summary you choose to share at the end of a session, through the phone's own
+share sheet, to Google Health's AI Coach.
 
-## Démarrer
+The interface is in French.
+
+**Expo SDK 56 · React Native 0.85 · TypeScript (strict) · expo-router · Zustand persisted to
+AsyncStorage**
+
+## What it refuses to do
+
+The shape of this app is mostly a list of things it does not have. No sign-up, because a training
+log is not worth an account. No server, because the data is three kilobytes and belongs on the
+device. No API integration with the coach, because a block of text shared through the OS does the
+job and breaks on nobody's schedule.
+
+Two decisions that cost more than they look:
+
+- **Exercise and routine names are frozen into history.** Rename a routine today and last month's
+  sessions still read the way they happened. History is a record, not a view over current data.
+- **State survives being killed.** Writes are debounced at around 300 ms and flushed on every set
+  validation, at the end of a session, and when the app goes to the background. Reopen it
+  mid-session and you are exactly where you left off, down to the running clock.
+
+## Getting started
 
 ```bash
 npm install
-npx expo start          # puis scanner le QR code avec Expo Go (SDK 56)
-# ou : npm run android / npm run ios
+npx expo start          # scan the QR code with Expo Go (SDK 56)
+# or: npm run android / npm run ios
 ```
 
-> **Node :** RN 0.85 recommande Node ≥ 20.19.4 (ou 22 LTS). Le projet s'installe et bundle sous 20.19.2, mais pour les builds natifs, préférer Node 22 LTS (`nvm install 22`).
+React Native 0.85 wants Node ≥ 20.19.4. It installs and bundles under 20.19.2, but prefer Node 22
+LTS for native builds.
 
-## Scripts
+| Command | What it does |
+| --- | --- |
+| `npm start` | Expo dev server |
+| `npm test` | unit tests on the business logic |
+| `npm run typecheck` | `tsc --noEmit`, strict |
+| `npm run lint` | ESLint |
 
-| Commande | Rôle |
-|---|---|
-| `npm start` | serveur de dev Expo |
-| `npm test` | tests unitaires (logique métier) |
-| `npm run typecheck` | `tsc --noEmit` (strict) |
-| `npm run lint` | ESLint Expo |
-
-## Architecture
+## How it is put together
 
 ```
 src/
-├── app/                  # routes expo-router (Bibliothèque · Séance · Historique + Bilan + détail)
-├── store/                # store Zustand persisté + opérations pures de séance (sessionOps)
-├── logic/                # LOGIQUE MÉTIER PURE, testée : volume, export, ghost, format
-├── theme/                # design tokens + typographie (Space Grotesk / Space Mono)
-├── components/           # ui/ (kit réutilisable) + library/ + workout/ + history/
-└── hooks/                # useChrono…
+├── app/          expo-router routes — library · session · history · stats, plus settings
+├── store/        persisted Zustand store and the pure session operations
+├── logic/        the business logic: volume, export text, backup, stats, ghost sets — pure, tested
+├── theme/        design tokens and typography
+├── components/   reusable kit, then library / workout / history
+└── hooks/        useChrono and friends
 ```
 
-Principes : séparation **UI / logique / store** ; aucune logique métier dans les vues ; noms d'exercices/routines **figés** dans l'historique (intégrité référentielle) ; persistance **debouncée (~300 ms)** + flush sur validation / fin de séance / mise en arrière-plan (reprise à l'identique après kill).
+The rule that holds it up: **no business logic in a view**. Anything that computes lives in
+`logic/`, has no React in it, and is tested — including `buildExportText`, which is pinned
+character for character, because the coach reads the text and a stray space changes what it sees.
 
-### 📚 Documentation détaillée
+## Repository map
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — structure, couches, état, persistance, navigation
-- [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) — entités, relations, intégrité référentielle
-- [`docs/BUSINESS-RULES.md`](docs/BUSINESS-RULES.md) — règles métier (§6) + format d'export (§7)
-- [`docs/SCREENS.md`](docs/SCREENS.md) — description écran par écran
+| Path | What is there |
+| --- | --- |
+| `docs/ARCHITECTURE.md` | Layers, state, persistence, navigation |
+| `docs/DATA-MODEL.md` | Entities, relations, referential integrity |
+| `docs/BUSINESS-RULES.md` | The business rules, and the export format |
+| `docs/SCREENS.md` | Every screen, described |
+| `design_handoff_commit_and_push/` | The brief and HTML prototype used as the visual oracle. Not shipped |
+| `AGENTS.md` | Conventions and hard rules for anyone — human or agent — working on this repo |
 
-### Logique métier testée (`src/logic/__tests__`)
+Documentation is in French; this page is not.
 
-- `computeVolume` — Σ poids×reps des séries validées d'exercices actifs (poids de corps = 0).
-- `buildExportText` — texte d'export **au caractère près** (§7) : filtres, formats, décimale virgule, `0kg x` pour le poids de corps.
-- `ghostFor` — dernière perf validée d'un exercice (ou `null`).
+## Licence
 
-```bash
-npm test   # 16 tests
-```
-
-## Choix techniques notables
-
-- **Partage de texte** : l'export utilise l'API `Share` de React Native (intent `ACTION_SEND text/plain`), seule adaptée au partage de **texte** vers l'AI Coach. `expo-sharing` (imposé) ne partage que des fichiers ; le presse-papier reste assuré par `expo-clipboard`.
-- **Réorganisation des exercices** : implémentée via **Monter / Descendre** (comme le prototype de référence). `react-native-draggable-flatlist` est installé (stack imposée) mais non câblé par prudence vis-à-vis de Reanimated v4 (SDK 56) ; le vrai drag & drop pourra être branché ultérieurement sans changer le modèle de données.
-
-## Référence design
-
-Le dossier `design_handoff_commit_and_push/` (cahier des charges, README de handoff, prototype HTML) sert d'**oracle visuel et comportemental**. Il n'est pas embarqué dans l'app.
+[MIT](LICENSE).
