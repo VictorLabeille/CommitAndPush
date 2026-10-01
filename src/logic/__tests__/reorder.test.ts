@@ -1,4 +1,4 @@
-import { moveItem } from '../reorder';
+import { moveInGroup, moveItem } from '../reorder';
 
 describe('moveItem', () => {
   it('déplace un élément vers le bas (dir +1)', () => {
@@ -40,5 +40,23 @@ describe('moveItem', () => {
     const copy = [...arr];
     moveItem(arr, 0, 1);
     expect(arr).toEqual(copy);
+  });
+});
+
+describe('moveInGroup', () => {
+  const r = (id: string, archived = false) => ({ id, archived });
+  const active = (x: { archived: boolean }) => !x.archived;
+
+  it('échange avec le voisin du groupe en sautant les éléments hors groupe', () => {
+    const arr = [r('a'), r('x', true), r('b'), r('c')];
+    expect(moveInGroup(arr, 'b', -1, active).map((x) => x.id)).toEqual(['b', 'x', 'a', 'c']);
+    expect(moveInGroup(arr, 'a', 1, active).map((x) => x.id)).toEqual(['b', 'x', 'a', 'c']);
+  });
+
+  it('no-op (même référence) en bout de groupe ou id inconnu', () => {
+    const arr = [r('x', true), r('a'), r('b'), r('y', true)];
+    expect(moveInGroup(arr, 'a', -1, active)).toBe(arr);
+    expect(moveInGroup(arr, 'b', 1, active)).toBe(arr);
+    expect(moveInGroup(arr, 'zzz', 1, active)).toBe(arr);
   });
 });

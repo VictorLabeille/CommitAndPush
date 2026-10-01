@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExerciseRow } from '@/components/library/ExerciseRow';
 import { RoutineCard } from '@/components/library/RoutineCard';
 import { RoutineEditorSheet } from '@/components/library/RoutineEditorSheet';
+import { RoutineSummarySheet } from '@/components/library/RoutineSummarySheet';
 import { Button } from '@/components/ui/Button';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -45,6 +46,7 @@ export default function LibraryScreen() {
   const archiveRoutine = useStore((s) => s.archiveRoutine);
   const unarchiveRoutine = useStore((s) => s.unarchiveRoutine);
   const deleteRoutine = useStore((s) => s.deleteRoutine);
+  const moveRoutine = useStore((s) => s.moveRoutine);
 
   const [section, setSection] = useState<Section>('exercices');
   const [exQuery, setExQuery] = useState('');
@@ -58,6 +60,7 @@ export default function LibraryScreen() {
     null,
   );
   const [routineMenu, setRoutineMenu] = useState<Routine | null>(null);
+  const [routineSummary, setRoutineSummary] = useState<Routine | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Routine | null>(null);
 
   const allVisibleEx = useMemo(() => visibleExercises(exercises), [exercises]);
@@ -146,11 +149,16 @@ export default function LibraryScreen() {
               </Pressable>
             </View>
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <RoutineCard
               routine={item}
               preview={routinePreview(item, exercises)}
+              onPress={() => setRoutineSummary(item)}
               onKebab={() => setRoutineMenu(item)}
+              onMoveUp={index > 0 ? () => moveRoutine(item.id, -1) : undefined}
+              onMoveDown={
+                index < shownRoutines.length - 1 ? () => moveRoutine(item.id, 1) : undefined
+              }
             />
           )}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
@@ -208,6 +216,12 @@ export default function LibraryScreen() {
           archiveExercise(ex.id);
           toast('Exercice archivé');
         }}
+      />
+
+      <RoutineSummarySheet
+        routine={routineSummary}
+        exercises={exercises}
+        onClose={() => setRoutineSummary(null)}
       />
 
       <RoutineMenu

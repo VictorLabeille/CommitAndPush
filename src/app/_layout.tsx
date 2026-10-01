@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ToastHost } from '@/components/ui/Toast';
+import { useRestNotifications } from '@/hooks/useRestNotifications';
 import { flushStorage } from '@/store/storage';
 import { useStore } from '@/store/store';
 import { fontMap } from '@/theme/fonts';
@@ -30,6 +31,8 @@ export default function RootLayout() {
   }, []);
 
   const ready = fontsLoaded && hydrated;
+  // Rappel d'étirements : replanification + routage des taps (navigation prête = `ready`).
+  useRestNotifications(ready);
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
@@ -51,6 +54,7 @@ export default function RootLayout() {
           <Stack.Screen name="history/[id]" />
           <Stack.Screen name="settings" />
           <Stack.Screen name="export-template" />
+          <Stack.Screen name="rest-day" />
         </Stack>
         <ToastHost />
       </SafeAreaProvider>

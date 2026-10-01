@@ -3,9 +3,9 @@
 **A gym log that owes nothing to a server.**
 
 A native Android app for tracking strength training: routines, sessions, sets and reps, history and
-stats. No account, no backend, no sync — everything lives on the phone. The only thing that ever
-leaves it is a text summary you choose to share at the end of a session, through the phone's own
-share sheet, to Google Health's AI Coach.
+stats — plus a daily nudge to stretch on rest days. No account, no backend, no sync — everything
+lives on the phone. The only thing that ever leaves it is a text summary you choose to share at the
+end of a session, through the phone's own share sheet, to Google Health's AI Coach.
 
 The interface is in French.
 
@@ -51,7 +51,9 @@ LTS for native builds.
 src/
 ├── app/          expo-router routes — library · session · history · stats, plus settings
 ├── store/        persisted Zustand store and the pure session operations
-├── logic/        the business logic: volume, export text, backup, stats, ghost sets — pure, tested
+├── logic/        the business logic: volume, export text, backup, stats, ghost sets, outlier
+│                 checks, rest-day reminder planning — pure, tested
+├── notifications/ local notifications (expo-notifications), kept apart from the logic
 ├── theme/        design tokens and typography
 ├── components/   reusable kit, then library / workout / history
 └── hooks/        useChrono and friends

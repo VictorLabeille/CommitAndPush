@@ -35,3 +35,31 @@ export function useKeyboardHeight(): number {
 
   return height;
 }
+
+/**
+ * Ordonnée (dans la fenêtre) du HAUT du clavier, `null` s'il est masqué.
+ *
+ * Pour un conteneur qui ne touche pas le bas de la fenêtre — un écran d'onglet s'arrête
+ * au-dessus de la barre d'onglets — `useKeyboardHeight` surestime le décalage : la partie
+ * du clavier qui recouvre la barre d'onglets ne recouvre pas le conteneur. Le bon
+ * décalage est `bas du conteneur − haut du clavier` (cf. `BottomSheet`).
+ */
+export function useKeyboardTop(): number | null {
+  const [top, setTop] = useState<number | null>(null);
+
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvt, (e) => {
+      const { screenY, height } = e.endCoordinates;
+      setTop(screenY ?? Dimensions.get('window').height - height);
+    });
+    const hide = Keyboard.addListener(hideEvt, () => setTop(null));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  return top;
+}

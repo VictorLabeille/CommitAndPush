@@ -16,3 +16,24 @@ export function moveItem<T>(arr: T[], index: number, dir: -1 | 1): T[] {
   [next[index], next[target]] = [next[target], next[index]];
   return next;
 }
+
+/**
+ * Déplace l'élément `id` d'un cran parmi les seuls éléments qui satisfont `inGroup`
+ * (ex. les routines actives), en l'échangeant avec son voisin du même groupe. Les
+ * éléments hors groupe (routines archivées) gardent leur position dans le tableau.
+ */
+export function moveInGroup<T extends { id: string }>(
+  arr: T[],
+  id: string,
+  dir: -1 | 1,
+  inGroup: (item: T) => boolean,
+): T[] {
+  const index = arr.findIndex((x) => x.id === id);
+  if (index < 0) return arr;
+  let target = index + dir;
+  while (target >= 0 && target < arr.length && !inGroup(arr[target])) target += dir;
+  if (target < 0 || target >= arr.length) return arr;
+  const next = [...arr];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}

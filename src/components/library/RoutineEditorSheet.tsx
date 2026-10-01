@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -38,6 +38,21 @@ export function RoutineEditorSheet({
   const [name, setName] = useState(initialName);
   const [selected, setSelected] = useState<string[]>(initialSelectedIds ?? []);
   const [query, setQuery] = useState('');
+  // Une seule zone défilante pour les deux listes : deux ScrollView à hauteur fixe se
+  // coupaient l'une l'autre, et s'écrasaient à presque rien clavier ouvert (2026-10-01).
+  const scrollRef = useRef<ScrollView>(null);
+  const searchY = useRef(0);
+  const searchFocused = useRef(false);
+  const scrollToSearch = () => scrollRef.current?.scrollTo({ y: searchY.current, animated: true });
+
+  // Au focus, la zone n'est pas encore réduite par le clavier : on recale une fois
+  // le clavier affiché, sinon le champ peut finir caché dessous.
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      if (searchFocused.current) scrollToSearch();
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -87,76 +102,91 @@ export function RoutineEditorSheet({
         placeholderTextColor={colors.muted}
       />
 
-      {/* Zone 1 — exercices de la routine, dans l'ordre, réordonnables via ▲▼ */}
-      <Text style={styles.hint}>Exercices de la routine · réordonne avec ▲▼</Text>
-      {selected.length === 0 ? (
-        <View style={styles.emptySelected}>
-          <Text style={styles.emptySelectedText}>Ajoute des exercices ci-dessous.</Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.ordered} keyboardShouldPersistTaps="handled">
-          {selected.map((id, i) => {
-            const isFirst = i === 0;
-            const isLast = i === selected.length - 1;
-            return (
-              <View key={id} style={styles.orderedRow}>
-                <Text style={styles.orderNum}>{i + 1}</Text>
-                <Text style={styles.orderedName} numberOfLines={1}>
-                  {nameById.get(id) ?? 'Exercice archivé'}
-                </Text>
-                <Pressable
-                  style={[styles.iconBtn, isFirst && styles.iconBtnOff]}
-                  disabled={isFirst}
-                  onPress={() => move(i, -1)}
-                  hitSlop={6}
-                >
-                  <Ionicons name="chevron-up" size={18} color={isFirst ? colors.border : colors.ink} />
-                </Pressable>
-                <Pressable
-                  style={[styles.iconBtn, isLast && styles.iconBtnOff]}
-                  disabled={isLast}
-                  onPress={() => move(i, 1)}
-                  hitSlop={6}
-                >
-                  <Ionicons name="chevron-down" size={18} color={isLast ? colors.border : colors.ink} />
-                </Pressable>
-                <Pressable style={styles.iconBtn} onPress={() => remove(id)} hitSlop={6}>
-                  <Ionicons name="close" size={18} color={colors.muted} />
-                </Pressable>
-              </View>
-            );
-          })}
-        </ScrollView>
-      )}
-
-      {/* Zone 2 — ajouter un exercice depuis la bibliothèque */}
-      <Text style={[styles.hint, styles.hintAdd]}>Ajouter un exercice</Text>
-      <SearchField value={query} onChangeText={setQuery} placeholder="Rechercher un exercice…" />
-
-      <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon="search"
-            title={exercises.length === 0 ? 'Aucun exercice' : 'Aucun résultat'}
-            subtitle={
-              exercises.length === 0 ? 'Crée d’abord des exercices dans la Bibliothèque.' : undefined
-            }
-          />
+      <ScrollView ref={scrollRef} style={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* Zone 1 — exercices de la routine, dans l'ordre, réordonnables via ▲▼ */}
+        <Text style={styles.hint}>Exercices de la routine · réordonne avec ▲▼</Text>
+        {selected.length === 0 ? (
+          <View style={styles.emptySelected}>
+            <Text style={styles.emptySelectedText}>Ajoute des exercices ci-dessous.</Text>
+          </View>
         ) : (
-          filtered.map((ex) => {
-            const isSel = selected.includes(ex.id);
-            return (
-              <Pressable key={ex.id} style={styles.row} onPress={() => toggle(ex.id)}>
-                <View style={[styles.checkbox, isSel && styles.checkboxOn]}>
-                  {isSel ? <Ionicons name="checkmark" size={15} color={colors.white} /> : null}
+          <View>
+            {selected.map((id, i) => {
+              const isFirst = i === 0;
+              const isLast = i === selected.length - 1;
+              return (
+                <View key={id} style={styles.orderedRow}>
+                  <Text style={styles.orderNum}>{i + 1}</Text>
+                  <Text style={styles.orderedName} numberOfLines={1}>
+                    {nameById.get(id) ?? 'Exercice archivé'}
+                  </Text>
+                  <Pressable
+                    style={[styles.iconBtn, isFirst && styles.iconBtnOff]}
+                    disabled={isFirst}
+                    onPress={() => move(i, -1)}
+                    hitSlop={6}
+                  >
+                    <Ionicons name="chevron-up" size={18} color={isFirst ? colors.border : colors.ink} />
+                  </Pressable>
+                  <Pressable
+                    style={[styles.iconBtn, isLast && styles.iconBtnOff]}
+                    disabled={isLast}
+                    onPress={() => move(i, 1)}
+                    hitSlop={6}
+                  >
+                    <Ionicons name="chevron-down" size={18} color={isLast ? colors.border : colors.ink} />
+                  </Pressable>
+                  <Pressable style={styles.iconBtn} onPress={() => remove(id)} hitSlop={6}>
+                    <Ionicons name="close" size={18} color={colors.muted} />
+                  </Pressable>
                 </View>
-                <Text style={styles.rowName} numberOfLines={1}>
-                  {ex.name}
-                </Text>
-              </Pressable>
-            );
-          })
+              );
+            })}
+          </View>
         )}
+
+        {/* Zone 2 — ajouter un exercice depuis la bibliothèque */}
+        <Text style={[styles.hint, styles.hintAdd]}>Ajouter un exercice</Text>
+        {/* À la saisie, on amène le champ en haut de la zone pour voir les résultats
+            au-dessus du clavier. */}
+        <View onLayout={(e) => (searchY.current = e.nativeEvent.layout.y)}>
+          <SearchField
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Rechercher un exercice…"
+            onFocus={() => {
+              searchFocused.current = true;
+              scrollToSearch();
+            }}
+            onBlur={() => (searchFocused.current = false)}
+          />
+        </View>
+
+        <View style={styles.list}>
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon="search"
+              title={exercises.length === 0 ? 'Aucun exercice' : 'Aucun résultat'}
+              subtitle={
+                exercises.length === 0 ? 'Crée d’abord des exercices dans la Bibliothèque.' : undefined
+              }
+            />
+          ) : (
+            filtered.map((ex) => {
+              const isSel = selected.includes(ex.id);
+              return (
+                <Pressable key={ex.id} style={styles.row} onPress={() => toggle(ex.id)}>
+                  <View style={[styles.checkbox, isSel && styles.checkboxOn]}>
+                    {isSel ? <Ionicons name="checkmark" size={15} color={colors.white} /> : null}
+                  </View>
+                  <Text style={styles.rowName} numberOfLines={1}>
+                    {ex.name}
+                  </Text>
+                </Pressable>
+              );
+            })
+          )}
+        </View>
       </ScrollView>
 
       <Button
@@ -200,7 +230,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptySelectedText: { fontFamily: fonts.grotesk.regular, fontSize: 13, color: colors.muted },
-  ordered: { maxHeight: 168 },
+  scroll: { flexShrink: 1 },
   orderedRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -230,7 +260,7 @@ const styles = StyleSheet.create({
   },
   iconBtnOff: { backgroundColor: 'transparent' },
   // Zone 2 — checklist d'ajout
-  list: { maxHeight: 220, marginTop: 12 },
+  list: { marginTop: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, height: touch.min },
   checkbox: {
     width: 24,

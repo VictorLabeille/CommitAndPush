@@ -8,10 +8,12 @@ interface Props {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 /** Champ de recherche instantané (filtre par sous-chaîne, insensible à la casse). */
-export function SearchField({ value, onChangeText, placeholder = 'Rechercher…' }: Props) {
+export function SearchField({ value, onChangeText, placeholder = 'Rechercher…', onFocus, onBlur }: Props) {
   return (
     <View style={styles.wrap}>
       <Ionicons name="search" size={18} color={colors.muted} />
@@ -19,6 +21,8 @@ export function SearchField({ value, onChangeText, placeholder = 'Rechercher…'
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
+        onFocus={onFocus}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
         autoCapitalize="none"

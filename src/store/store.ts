@@ -14,6 +14,12 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { BACKUP_VERSION, migrateData, type BackupData } from '@/logic/backup';
 import { DEFAULT_EXPORT_TEMPLATE } from '@/logic/exportText';
+import { moveInGroup } from '@/logic/reorder';
+import {
+  DEFAULT_REST_REMINDER,
+  type RestDecision,
+  type RestReminderSettings,
+} from '@/logic/restPlan';
 import { newId } from '@/utils/id';
 import * as ops from './sessionOps';
 import { debouncedStorage, flushStorage } from './storage';
@@ -31,6 +37,9 @@ interface PersistedState {
   activeSession: WorkoutSession | null;
   lastBackupAt: number | null; // horodatage du dernier export (rappel de sauvegarde)
   exportTemplate: string; // template du texte d'export AI Coach (personnalisable)
+  // Rappel d'étirements (réglage propre à l'appareil : hors sauvegarde, comme lastBackupAt).
+  restReminder: RestReminderSettings;
+  restDecision: RestDecision | null; // choix du jour sur l'écran de décision
 }
 
 interface AppState extends PersistedState {
@@ -48,6 +57,8 @@ interface AppState extends PersistedState {
   archiveRoutine: (id: string) => void;
   unarchiveRoutine: (id: string) => void;
   deleteRoutine: (id: string) => void;
+  /** Monte/descend une routine parmi celles de même statut (actives ou archivées). */
+  moveRoutine: (id: string, dir: -1 | 1) => void;
 
   // --- Cycle de vie de la séance active ---
   startSession: (routine: Routine | null) => void;
@@ -89,6 +100,8 @@ interface AppState extends PersistedState {
   // --- Réglages ---
   setExportTemplate: (template: string) => void;
   resetExportTemplate: () => void; // restaure le template par défaut
+  setRestReminder: (patch: Partial<RestReminderSettings>) => void;
+  setRestDecision: (decision: RestDecision | null) => void;
 }
 
 /** Applique une transformation à la séance active si elle existe. */
@@ -113,6 +126,8 @@ export const useStore = create<AppState>()(
         activeSession: null,
         lastBackupAt: null,
         exportTemplate: DEFAULT_EXPORT_TEMPLATE,
+        restReminder: DEFAULT_REST_REMINDER,
+        restDecision: null,
         _hasHydrated: false,
         setHasHydrated: (v) => set({ _hasHydrated: v }),
 
@@ -190,6 +205,11 @@ export const useStore = create<AppState>()(
           })),
         deleteRoutine: (id) =>
           set((state) => ({ routines: state.routines.filter((r) => r.id !== id) })),
+        moveRoutine: (id, dir) =>
+          set((state) => {
+            const archived = state.routines.find((r) => r.id === id)?.isArchived;
+            return { routines: moveInGroup(state.routines, id, dir, (r) => r.isArchived === archived) };
+          }),
 
         // --- Cycle de vie de la séance active ---
         startSession: (routine) => {
@@ -293,6 +313,12 @@ export const useStore = create<AppState>()(
         // --- Réglages ---
         setExportTemplate: (template) => set({ exportTemplate: template }),
         resetExportTemplate: () => set({ exportTemplate: DEFAULT_EXPORT_TEMPLATE }),
+        setRestReminder: (patch) =>
+          set((state) => ({ restReminder: { ...state.restReminder, ...patch } })),
+        setRestDecision: (decision) => {
+          set({ restDecision: decision });
+          flushStorage();
+        },
       };
     },
     {
@@ -306,6 +332,8 @@ export const useStore = create<AppState>()(
         activeSession: state.activeSession,
         lastBackupAt: state.lastBackupAt,
         exportTemplate: state.exportTemplate,
+        restReminder: state.restReminder,
+        restDecision: state.restDecision,
       }),
       // Migration via la logique pure partagée avec l'import de sauvegarde (`migrateData`).
       migrate: (persisted, version): PersistedState => {
@@ -314,6 +342,8 @@ export const useStore = create<AppState>()(
           ...migrateData(p, version),
           lastBackupAt: p.lastBackupAt ?? null,
           exportTemplate: p.exportTemplate ?? DEFAULT_EXPORT_TEMPLATE,
+          restReminder: p.restReminder ?? DEFAULT_REST_REMINDER,
+          restDecision: p.restDecision ?? null,
         };
       },
       onRehydrateStorage: () => (state) => state?.setHasHydrated(true),

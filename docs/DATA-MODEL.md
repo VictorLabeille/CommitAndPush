@@ -75,4 +75,9 @@ Routine ──> startSession() ──> WorkoutSession (active)
 
 ## Persistance
 
-Seules ces 4 collections sont persistées (`partialize`) — l'état d'UI ne l'est pas. Le schéma porte une `version` et une fonction `migrate` (squelette) pour les évolutions futures.
+Sont persistés (`partialize`) les 4 collections métier, plus `lastBackupAt`, `exportTemplate`,
+`restReminder` (`{ enabled, hour, minute }`, défaut 14:00 activé) et `restDecision` (choix du jour
+sur l'écran de repos : `gym`, `stretch` ou `snooze` avec heure, daté par `day` en `AAAA-MM-JJ` et
+ignoré dès le lendemain). L'état d'UI ne l'est pas. Les nouveaux champs n'ont pas exigé de
+`version` : la fusion par défaut de `persist` garde leur valeur initiale quand ils manquent.
+La sauvegarde JSON ne contient que les collections et le texte d'export. Le schéma porte une `version` et une fonction `migrate` (squelette) pour les évolutions futures.

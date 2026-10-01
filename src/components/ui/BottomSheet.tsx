@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
+import { useKeyboardTop } from '@/hooks/useKeyboardHeight';
 import { colors, radii, spacing } from '@/theme/tokens';
 import { type } from '@/theme/typography';
 
@@ -29,7 +29,11 @@ interface Props {
 export function BottomSheet({ visible, onClose, title, children }: Props) {
   const [mounted, setMounted] = useState(visible);
   const insets = useSafeAreaInsets();
-  const keyboard = useKeyboardHeight();
+  const keyboardTop = useKeyboardTop();
+  // Cadre du conteneur dans la fenêtre : dans un écran d'onglet, il s'arrête au-dessus de
+  // la barre d'onglets, pas au bas de la fenêtre.
+  const containerRef = useRef<View>(null);
+  const [frame, setFrame] = useState<{ top: number; bottom: number } | null>(null);
   const translateY = useRef(new Animated.Value(SCREEN_H)).current;
   const scrim = useRef(new Animated.Value(0)).current;
 
@@ -50,20 +54,32 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
 
   if (!mounted) return null;
 
+  const measure = () =>
+    containerRef.current?.measureInWindow((_x, y, _w, h) => setFrame({ top: y, bottom: y + h }));
+
+  // Décalage = part du conteneur réellement recouverte par le clavier. Calculer depuis la
+  // hauteur du clavier laissait un vide de la hauteur de la barre d'onglets (2026-10-01).
+  const keyboard = keyboardTop != null && frame ? Math.max(0, frame.bottom - keyboardTop) : 0;
+  // Hauteur max : l'espace visible au-dessus du clavier, sous la barre d'état.
+  const maxHeight = frame
+    ? frame.bottom - keyboard - Math.max(frame.top, insets.top) - 8
+    : undefined;
+
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View ref={containerRef} onLayout={measure} style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View style={[styles.scrim, { opacity: scrim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
       {/* On décale le sheet au-dessus du clavier nous-mêmes (edge-to-edge Android
-          ne redimensionne plus la fenêtre, cf. useKeyboardHeight). */}
+          ne redimensionne plus la fenêtre, cf. useKeyboardTop). */}
       <View style={[styles.kav, { paddingBottom: keyboard }]} pointerEvents="box-none">
         <Animated.View
           style={[
             styles.sheet,
             {
-              paddingBottom: (keyboard > 0 ? 16 : insets.bottom + 16),
+              paddingBottom: keyboard > 0 ? 16 : insets.bottom + 16,
+              maxHeight: maxHeight ?? '88%',
               transform: [{ translateY }],
             },
           ]}
@@ -86,7 +102,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radii.sheet,
     paddingHorizontal: spacing.gutter,
     paddingTop: 10,
-    maxHeight: '88%',
   },
   handle: {
     alignSelf: 'center',

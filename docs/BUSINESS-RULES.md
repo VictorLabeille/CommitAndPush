@@ -39,10 +39,32 @@ volume = Σ (weight × reps)   pour toutes les séries `completed` des exercices
 - Une série ne peut être validée que si **`reps > 0`** (sinon toast « Renseigne des répétitions (> 0) »).
 - Modifier les reps à ≤ 0 **dévalide** automatiquement la série.
 - **Suppression de série** : interdite en séance active, autorisée en édition d'historique.
+- **Valeurs aberrantes** (`logic/outlier.ts`) : à la validation d'une série en séance active, poids
+  et reps sont comparés à la série de même rang de la dernière perf (la même que le ghost, §6.2 ;
+  au-delà, sa dernière série). Un écart de **plus de 50 %** demande confirmation. On **avertit**,
+  on ne bloque jamais. Le poids de corps (0 kg) n'est pas comparé. Pas de contrôle à l'édition
+  d'historique. Arbitré le 2026-10-01 : la référence est l'historique, pas des bornes fixes.
 
 ## §6.6 — Confirmations
 
 « Terminer la séance » et « Supprimer la séance » passent par une feuille de confirmation (`ConfirmSheet`).
+
+## Rappel d'étirements des jours de repos
+
+Ajouté le 2026-10-01 (`logic/restPlan.ts`, testé). Les étirements des jours sans salle étaient
+systématiquement oubliés.
+
+- Chaque jour à l'heure réglée (**14 h** par défaut, réglable et désactivable dans Réglages), une
+  notif de **décision** ouvre l'écran `rest-day`.
+- Trois choix, valables pour la journée : **salle** (plus rien ce jour-là), **étirements à HH:MM**
+  (sélecteur d'heure natif → notif d'étirements à cette heure ; une heure passée est refusée),
+  **pas encore** (la décision revient dans 30 min, 1 h ou 2 h, au choix).
+- Une séance **enregistrée ou en cours** ce jour-là vaut « salle » : ni décision, ni étirements,
+  même si des étirements avaient été prévus.
+- Planification par notifs **datées**, 14 jours d'avance, refaite à chaque ouverture de l'app et à
+  chaque changement (réglage, décision, séance). Un déclencheur quotidien ne sait pas sauter un
+  jour. Sans ouvrir l'app pendant 14 jours, les notifs s'arrêtent.
+- Réglage propre à l'appareil : **hors sauvegarde** JSON, comme `lastBackupAt`.
 
 ## §7 — Texte d'export
 

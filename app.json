@@ -18,7 +18,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.rotsiv.CommitAndPush"
+      "package": "com.rotsiv.CommitAndPush",
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "output": "static",
@@ -34,7 +37,15 @@
           "imageWidth": 200
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#1E3B2C"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

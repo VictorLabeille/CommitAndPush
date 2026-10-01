@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BackupReminder } from '@/components/backup/BackupReminder';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
@@ -15,8 +16,9 @@ import { AddExerciseSheet } from '@/components/workout/AddExerciseSheet';
 import { ChronoHeader } from '@/components/workout/ChronoHeader';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
-import { parseReps, parseWeight } from '@/logic/format';
+import { fmtNum, parseReps, parseWeight } from '@/logic/format';
 import { ghostFor } from '@/logic/ghost';
+import { findOutliers, type Outlier } from '@/logic/outlier';
 import { computeVolume } from '@/logic/volume';
 import { activeRoutines, routinePreview, visibleExercises } from '@/store/selectors';
 import { useStore } from '@/store/store';
@@ -49,6 +51,7 @@ function RestState() {
         ListHeaderComponent={
           <View style={styles.restHeader}>
             <ScreenHeader eyebrow="Prêt à pousser" title="Entraînement" />
+            <BackupReminder />
           </View>
         }
         renderItem={({ item }) => (
@@ -127,6 +130,10 @@ function ActiveSession() {
   const [fabOpen, setFabOpen] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [menuExId, setMenuExId] = useState<string | null>(null);
+  // Série en attente de confirmation : une valeur s'écarte de la dernière perf.
+  const [suspect, setSuspect] = useState<{ exId: string; setId: string; outliers: Outlier[] } | null>(
+    null,
+  );
 
   const volume = useMemo(() => (session ? computeVolume(session) : 0), [session]);
   const visibleEx = useMemo(() => visibleExercises(exercises), [exercises]);
@@ -144,8 +151,23 @@ function ActiveSession() {
   const menuIndex = menuExId ? session.exercises.findIndex((e) => e.exerciseId === menuExId) : -1;
   const menuEx = menuIndex >= 0 ? session.exercises[menuIndex] : null;
 
-  const onToggle = (exId: string, setId: string) => {
+  const doToggle = (exId: string, setId: string) => {
     if (!toggleSet(exId, setId)) toast('Renseigne des répétitions (> 0)');
+  };
+
+  // À la validation (pas au décochage), on fait confirmer une valeur inhabituelle.
+  const onToggle = (exId: string, setId: string) => {
+    const ex = session.exercises.find((e) => e.exerciseId === exId);
+    const index = ex ? ex.sets.findIndex((st) => st.id === setId) : -1;
+    const theSet = ex?.sets[index];
+    if (theSet && !theSet.completed && theSet.reps > 0) {
+      const outliers = findOutliers(exId, index, theSet, sessions);
+      if (outliers.length > 0) {
+        setSuspect({ exId, setId, outliers });
+        return;
+      }
+    }
+    doToggle(exId, setId);
   };
 
   return (
@@ -237,6 +259,19 @@ function ActiveSession() {
       />
 
       <ConfirmSheet
+        visible={!!suspect}
+        title="Valeur inhabituelle"
+        message={suspect ? outlierMessage(suspect.outliers) : undefined}
+        confirmLabel="Valider quand même"
+        cancelLabel="Corriger"
+        onConfirm={() => {
+          if (suspect) doToggle(suspect.exId, suspect.setId);
+          setSuspect(null);
+        }}
+        onCancel={() => setSuspect(null)}
+      />
+
+      <ConfirmSheet
         visible={confirmFinish}
         title="Terminer la séance ?"
         message="Tu pourras corriger la durée et partager le résumé sur l'écran suivant."
@@ -252,10 +287,19 @@ function ActiveSession() {
   );
 }
 
+function outlierMessage(outliers: Outlier[]): string {
+  const lines = outliers.map((o) =>
+    o.field === 'weight'
+      ? `Poids : ${fmtNum(o.value)} kg (dernière fois ${fmtNum(o.reference)} kg)`
+      : `Reps : ${o.value} (dernière fois ${o.reference})`,
+  );
+  return lines.join('\n') + '\nFaute de frappe ?';
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   listContent: { paddingHorizontal: spacing.gutter, paddingBottom: 24 },
-  restHeader: { paddingBottom: 20 },
+  restHeader: { paddingBottom: 20, gap: 16 },
   activeListContent: { paddingHorizontal: spacing.gutter, paddingTop: 16, paddingBottom: 120 },
   routineName: { fontFamily: fonts.grotesk.bold, fontSize: 20, color: colors.ink },
   routineCount: { fontFamily: fonts.mono.bold, fontSize: 13, color: colors.gold },

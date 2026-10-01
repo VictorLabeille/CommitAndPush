@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TemplateChoiceSheet } from '@/components/settings/TemplateChoiceSheet';
@@ -20,6 +21,7 @@ import {
   type BackupData,
 } from '@/logic/backup';
 import { fmtDate } from '@/logic/format';
+import { ensurePermission } from '@/notifications/restNotifications';
 import { useStore } from '@/store/store';
 import { colors, radii, spacing, touch } from '@/theme/tokens';
 import { fonts } from '@/theme/typography';
@@ -27,6 +29,8 @@ import { fonts } from '@/theme/typography';
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const restReminder = useStore((s) => s.restReminder);
+  const setRestReminder = useStore((s) => s.setRestReminder);
   const toast = useToast();
 
   const exercises = useStore((s) => s.exercises);
@@ -200,6 +204,56 @@ export default function SettingsScreen() {
             style={styles.action}
           />
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.eyebrow}>Jours de repos</Text>
+          <Text style={styles.h1}>Rappel d’étirements</Text>
+          <Text style={styles.lead}>
+            Chaque jour sans séance, une notification te demande si tu vas à la salle ou à quelle
+            heure tu t’étires.
+          </Text>
+          <Card style={styles.statusCard}>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Activé</Text>
+              <Switch
+                value={restReminder.enabled}
+                onValueChange={async (enabled) => {
+                  if (enabled && !(await ensurePermission())) {
+                    toast('Autorise les notifications dans les réglages Android');
+                    return;
+                  }
+                  setRestReminder({ enabled });
+                }}
+                trackColor={{ true: colors.green2, false: colors.border }}
+                thumbColor={colors.white}
+              />
+            </View>
+            <Pressable
+              style={[styles.statusRow, styles.statusRowLast]}
+              disabled={!restReminder.enabled}
+              onPress={() =>
+                DateTimePickerAndroid.open({
+                  value: new Date(2000, 0, 1, restReminder.hour, restReminder.minute),
+                  mode: 'time',
+                  is24Hour: true,
+                  onValueChange: (_e, date) =>
+                    setRestReminder({ hour: date.getHours(), minute: date.getMinutes() }),
+                })
+              }
+            >
+              <Text style={styles.statusLabel}>Heure de la question</Text>
+              <Text style={[styles.statusValue, !restReminder.enabled && styles.statusOff]}>
+                {String(restReminder.hour).padStart(2, '0')}:
+                {String(restReminder.minute).padStart(2, '0')}
+              </Text>
+            </Pressable>
+          </Card>
+          <Button
+            label="Ouvrir l’écran de décision"
+            variant="outline"
+            onPress={() => router.push('/rest-day')}
+          />
+        </View>
       </ScrollView>
 
       <ConfirmSheet
@@ -270,6 +324,7 @@ const styles = StyleSheet.create({
   statusLabel: { fontFamily: fonts.grotesk.regular, fontSize: 14, color: colors.muted },
   statusValue: { fontFamily: fonts.mono.bold, fontSize: 14, color: colors.ink },
   statusWarn: { color: colors.gold },
+  statusOff: { color: colors.muted },
   action: { marginTop: 12 },
   note: {
     fontFamily: fonts.grotesk.regular,
